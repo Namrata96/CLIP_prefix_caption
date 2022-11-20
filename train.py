@@ -53,7 +53,7 @@ class ClipCocoDataset(Dataset):
         self.normalize_prefix = normalize_prefix
         with open(data_path, 'rb') as f:
             all_data = pickle.load(f)
-        print("Data size is %0d" % len(all_data["clip_embedding"]))
+        print("Data size is ", len(all_data["clip_embedding"]), len(all_data["captions"]) )
         sys.stdout.flush()
         self.prefixes = all_data["clip_embedding"]
         captions_raw = all_data["captions"]
@@ -62,19 +62,24 @@ class ClipCocoDataset(Dataset):
         if os.path.isfile(f"{data_path[:-4]}_tokens.pkl"):
             with open(f"{data_path[:-4]}_tokens.pkl", 'rb') as f:
                 self.captions_tokens, self.caption2embedding, self.max_seq_len = pickle.load(f)
+                print("1 caption2embedding example: ", self.caption2embedding[0])
+                print("Length of loaded data is captions_tokens={0}, caption2embedding={1}, max_seq_len={2}".format(len(self.captions_tokens), len(self.caption2embedding), self.max_seq_len))
         else:
             self.captions_tokens = []
             self.caption2embedding = []
             max_seq_len = 0
-            for caption in captions_raw:
+            print("1 caption raw example: ", captions_raw[0])
+            for i, caption in enumerate(captions_raw):
                 self.captions_tokens.append(torch.tensor(self.tokenizer.encode(caption['caption']), dtype=torch.int64))
-                self.caption2embedding.append(caption["clip_embedding"])
+                # self.caption2embedding.append(caption["clip_embedding"])
+                self.caption2embedding.append(i)
                 max_seq_len = max(max_seq_len, self.captions_tokens[-1].shape[0])
             # self.max_seq_len = max_seq_len
             with open(f"{data_path[:-4]}_tokens.pkl", 'wb') as f:
                 pickle.dump([self.captions_tokens, self.caption2embedding, max_seq_len], f)
         all_len = torch.tensor([len(self.captions_tokens[i]) for i in range(len(self))]).float()
         self.max_seq_len = min(int(all_len.mean() + all_len.std() * 10), int(all_len.max()))
+        print("Length of created data is captions_tokens={0} caption2embedding={1} max_seq_len={2}".format(len(self.captions_tokens), len(self.caption2embedding), self.max_seq_len))
 
 
 class MLP(nn.Module):
@@ -291,7 +296,7 @@ def load_model(config_path: str, epoch_or_latest: Union[str, int] = '_latest'):
 def train(dataset: ClipCocoDataset, model: ClipCaptionModel, args,
           lr: float = 2e-5, warmup_steps: int = 5000, output_dir: str = ".", output_prefix: str = ""):
 
-    device = torch.device('cuda:0')
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     batch_size = args.bs
     epochs = args.epochs
     if not os.path.exists(output_dir):
