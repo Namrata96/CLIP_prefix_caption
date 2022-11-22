@@ -11,7 +11,7 @@ import sys
 import argparse
 import json
 from typing import Tuple, Optional, Union
-
+from predict_sherlock import evaluate
 
 class MappingType(Enum):
     MLP = 'mlp'
@@ -58,7 +58,7 @@ class ClipCocoDataset(Dataset):
         self.prefixes = all_data["clip_embedding"]
         captions_raw = all_data["captions"]
         # self.image_ids = [caption["image_id"] for caption in captions_raw]
-        self.captions = [caption['caption'] for caption in captions_raw]
+        self.captions = [caption['inputs']['clue'] for caption in captions_raw]
         if os.path.isfile(f"{data_path[:-4]}_tokens.pkl"):
             with open(f"{data_path[:-4]}_tokens.pkl", 'rb') as f:
                 self.captions_tokens, self.caption2embedding, self.max_seq_len = pickle.load(f)
@@ -70,7 +70,7 @@ class ClipCocoDataset(Dataset):
             max_seq_len = 0
             print("1 caption raw example: ", captions_raw[0])
             for i, caption in enumerate(captions_raw):
-                self.captions_tokens.append(torch.tensor(self.tokenizer.encode(caption['caption']), dtype=torch.int64))
+                self.captions_tokens.append(torch.tensor(self.tokenizer.encode(caption['inputs']['clue']), dtype=torch.int64))
                 # self.caption2embedding.append(caption["clip_embedding"])
                 self.caption2embedding.append(i)
                 max_seq_len = max(max_seq_len, self.captions_tokens[-1].shape[0])
@@ -369,7 +369,6 @@ def main():
         print("Train both prefix and GPT")
         sys.stdout.flush()
     train(dataset, model, args, output_dir=args.out_dir, output_prefix=args.prefix)
-
 
 if __name__ == '__main__':
     main()
