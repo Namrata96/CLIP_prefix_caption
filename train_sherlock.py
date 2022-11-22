@@ -13,6 +13,7 @@ import json
 from typing import Tuple, Optional, Union
 from predict_sherlock import evaluate
 
+
 class MappingType(Enum):
     MLP = 'mlp'
     Transformer = 'transformer'
